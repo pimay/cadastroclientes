@@ -1,88 +1,14 @@
 #tutorial sobre tkinter htt.ps://www.youtube.com/watch?v=RtrZcoVD1WM
 
-from tkinter import *
-from tkinter import ttk
-import sqlite3
+from modulos import *
+from relatorios import *
+from funcoes import *
 
 #variavel para chamar o tkinter
 root = Tk();
 
-#classe com as funcoes dos botoes - back end
-class Funcs():
-    #nao vai precisar de init pq nao vai precisar nada automaticamente
-    def limpa_tela(self):
-        #pegar o nome das entry
-        self.codigo_entry.delete(0, END)
-        self.nome_entry.delete(0, END)
-        self.telefone_entry.delete(0, END)
-        self.cidade_entry.delete(0, END)
-
-    ###BANCO DE DADOS##
-    #funcao para conectar ao banco de dados
-    def conecta_bd(self):
-        #nome do banco de dados
-        self.conn = sqlite3.connect("clientes.db")
-        #variavel
-        self.cursor = self.conn.cursor(); print("connectando ao banco de dados")
-    
-    #desconetar banco de dados
-    def desconecta_bd(self):
-        self.conn.close();  print("desconecta no banco de dados")
-    
-    def montaTabelas(self):
-        #conectar o banco de dados
-        self.conecta_bd(); 
-        
-        #criando a tabelas
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS clientes (
-            cod INTEGER PRIMARY KEY,
-            nome_cliente CHAR(48) NOT NULL,
-            telefone INTERGER(20),
-            cidade CHAR(40)                            
-            );
-        """)
-        self.conn.commit(); print("Banco de dados criado")
-        self.desconecta_bd()
-    ###BANCO DE DADOS##
-    
-    #botao para adicionar clientes ao banco de dados
-    def add_clientes(self):
-        #get() serve para pegar o valor da entry
-        self.codigo = self.codigo_entry.get();
-        self.nome = self.nome_entry.get();
-        self.telefone = self.telefone_entry.get();
-        self.cidade = self.cidade_entry.get();
-        
-        #conecta ao banco de dados
-        self.conecta_bd()
-        #insere o valor
-        self.cursor.execute(""" 
-            INSERT INTO clientes (nome_cliente, telefone, cidade)
-            VALUES (?, ?, ?) """, (self.nome, self.telefone, self.cidade))
-        self.conn.commit();
-        self.desconecta_bd();
-        #para atualizar a lista anterior
-        self.select_list();
-        #limpa as entry
-        self.limpa_tela();
-    
-    def select_list(self):
-        #sempre chama a funcao delete
-        self.listaCli.delete(*self.listaCli.get_children())
-        #abre o banco de dados
-        self.conecta_bd()
-        lista = self.cursor.execute(""" SELECT cod, nome_cliente, telefone, cidade FROM clientes 
-                                    ORDER BY nome_cliente ASC;""")
-                                    
-        #a for list para jogar corretamente na treeview
-        for i in lista:
-            self.listaCli.insert("", END, values=i)
-    
-        self.conn.commit();
-        
 #classe da tela - front end
-class Application(Funcs):
+class Application(Funcs, Relatorios):
     def __init__(self):
         #equivalencia de nomes
         self.root = root;
@@ -98,6 +24,8 @@ class Application(Funcs):
         self.montaTabelas();
         #sempre que abrir, mostra a lista
         self.select_list();
+        #chamar o menu
+        self.Menus();
         #abre a janela
         root.mainloop();
 
@@ -143,7 +71,7 @@ class Application(Funcs):
         
         #botao buscar
         self.bt_buscar = Button(self.frame_1, text = "Buscar", bd = 2, bg="blue", fg = "black",
-                               font=("verdana",8, "bold"))
+                               font=("verdana",8, "bold"),command = self.busca_cliente)
         #posicao
         self.bt_buscar.place(relx = 0.3, rely= 0.1, relwidth = .1, relheight = 0.15)
         
@@ -155,13 +83,13 @@ class Application(Funcs):
         
         #botao alterar
         self.bt_alterar = Button(self.frame_1, text = "Alterar", bd = 2, bg="blue", fg = "black",
-                                font=("verdana",8, "bold"))
+                                font=("verdana",8, "bold"),command = self.altera_clientes)
         #posicao
         self.bt_alterar.place(relx = 0.7, rely= 0.1, relwidth = .1, relheight = 0.15)
         
         #botao apagar
         self.bt_apagar = Button(self.frame_1, text = "Apagar", bd = 2, bg="blue", fg = "black",
-                                font=("verdana",8, "bold"))
+                                font=("verdana",8, "bold"), command = self.deleta_cliente)
         #posicao
         self.bt_apagar.place(relx = 0.8, rely= 0.1, relwidth = .1, relheight = 0.15)
         ########################################################################################
@@ -229,8 +157,37 @@ class Application(Funcs):
         self.listaCli.config(yscrollcommand = self.scrollLista.set)
         self.scrollLista.place(relx=0.96, rely=0.1, relwidth = 0.04, relheight = 0.85)
      
+        #chama a funcao de double click
+        #bind interacao com a lista
+        self.listaCli.bind("<Double-1>", self.ondoubleclick)
     
-    
+    def Menus(self):
+        #criar menus
+        menubar = Menu(self.root)
+        self.root.config(menu=menubar)
+        #variavel para primeiro menu
+        filemenu = Menu(menubar);
+        #variavel para segundo menu
+        filemenu2 = Menu(menubar);
+        
+        
+        #funcao para deletar
+        def Quit():
+            self.root.destroy();
+        
+        #primeiro menu nome opcoes
+        menubar.add_cascade(label="Opções", menu= filemenu)
+        #segundo menu nome Sobre
+        menubar.add_cascade(label="Sobre", menu= filemenu2)
+        
+        ##ADICIONAR COMANDOS
+        #adicionar os comandos filemenu
+        filemenu.add_command(label="sair", command = Quit)
+        
+        filemenu.add_command(label="limpa cliente", command = self.limpa_tela)
+        #adicionar os comandos no filemenu2
+        filemenu2.add_command(label="Ficha do Cliente", command = self.geraRelatorioCliente)
+        
 #call the class
 Application()
 
